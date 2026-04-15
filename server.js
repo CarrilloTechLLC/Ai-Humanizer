@@ -69,7 +69,7 @@ app.post("/api/humanize", async (req, res) => {
         "X-Title": "AI Text Humanizer"
       },
       body: JSON.stringify({
-        model: "meta-llama/llama-3-8b-instruct:free",
+        model: "meta-llama/llama-3.1-8b-instruct:free",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: `Rewrite the following text:\n\n${text}` }
