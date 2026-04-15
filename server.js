@@ -65,8 +65,8 @@ app.post("/api/humanize", async (req, res) => {
       headers: {
         "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://ai-humanizer-production-4270.up.railway.app", // Required by OpenRouter for free models
-        "X-Title": "AI Text Humanizer" // Required by OpenRouter for free models
+        "HTTP-Referer": "https://ai-humanizer-production-4270.up.railway.app",
+        "X-Title": "AI Text Humanizer"
       },
       body: JSON.stringify({
         model: "meta-llama/llama-3-8b-instruct:free",
@@ -80,7 +80,8 @@ app.post("/api/humanize", async (req, res) => {
     if (!response.ok) {
         const errorText = await response.text();
         console.error("OpenRouter API Error:", errorText);
-        return res.status(response.status).json({ error: "AI Processing failed." });
+        // FIX: This pushes the exact OpenRouter error right to your website UI
+        return res.status(response.status).json({ error: `API Error: ${errorText}` });
     }
 
     const data = await response.json();
@@ -89,7 +90,8 @@ app.post("/api/humanize", async (req, res) => {
     return res.json({ humanized });
   } catch (err) {
     console.error("Server error:", err);
-    return res.status(500).json({ error: "Humanization failed." });
+    // FIX: This pushes any server crash messages to your UI
+    return res.status(500).json({ error: `Server Error: ${err.message}` });
   }
 });
 
