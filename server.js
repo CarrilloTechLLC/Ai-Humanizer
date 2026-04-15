@@ -64,7 +64,9 @@ app.post("/api/humanize", async (req, res) => {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://ai-humanizer-production-4270.up.railway.app", // Required by OpenRouter for free models
+        "X-Title": "AI Text Humanizer" // Required by OpenRouter for free models
       },
       body: JSON.stringify({
         model: "meta-llama/llama-3-8b-instruct:free",
