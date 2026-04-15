@@ -1,15 +1,17 @@
 import express from "express";
 import cors from "cors";
-import Anthropic from "@anthropic-ai/sdk";
+import path from "path";
+import { fileURLToPath } from "url";
 import "dotenv/config";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+app.use(express.static(path.join(__dirname, "public")));
 
 const SYSTEM_PROMPTS = {
   subtle: `You are an expert editor who lightly polishes AI-generated text to feel more natural.
@@ -58,39 +60,44 @@ app.post("/api/humanize", async (req, res) => {
   const systemPrompt = SYSTEM_PROMPTS[mode] || SYSTEM_PROMPTS["balanced"];
 
   try {
-    const message = await anthropic.messages.create({
-      model: "claude-opus-4-5",
-      max_tokens: 4096,
-      system: systemPrompt,
-      messages: [
-        {
-          role: "user",
-          content: `Rewrite the following text:\n\n${text}`,
-        },
-      ],
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "meta-llama/llama-3-8b-instruct:free",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Rewrite the following text:\n\n${text}` }
+        ]
+      })
     });
 
-    const humanized = message.content
-      .filter((block) => block.type === "text")
-      .map((block) => block.text)
-      .join("");
+    if (!response.ok) {
+        const errorText = await response.text();
+        console.error("OpenRouter API Error:", errorText);
+        return res.status(response.status).json({ error: "AI Processing failed." });
+    }
+
+    const data = await response.json();
+    const humanized = data.choices[0].message.content;
 
     return res.json({ humanized });
   } catch (err) {
-    console.error("Anthropic API error:", err);
-    if (err.status === 401) {
-      return res.status(500).json({ error: "Invalid API key." });
-    }
-    if (err.status === 429) {
-      return res.status(429).json({ error: "Rate limit reached. Try again shortly." });
-    }
+    console.error("Server error:", err);
     return res.status(500).json({ error: "Humanization failed." });
   }
 });
 
 app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
 
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Humanizer server running → http://localhost:${PORT}`);
+  console.log(`Humanizer server running on port ${PORT}`);
 });
